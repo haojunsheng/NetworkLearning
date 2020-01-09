@@ -1,0 +1,413 @@
+<!--ts-->
+
+<!--te-->
+
+# unix网络编程套接字互联网API
+
+# 前言
+
+本机是文件描述符(Unix I/O)，然后跨主机需要使用socket编程。这个时候我们就可以在两台电脑进行通信。然后我们构建了支持html语言的www服务器，使用http协议来传输。这个时候，服务器只可以传递静态内容，我们是需要动态服务器的，我们引入了CGI技术。不甘心CGI技术独霸天下，Java引入了Servlet技术。后面在服务器的基础上，又演化出了容器技术，比如tomcat，spring等容器。
+
+
+
+socket是对TCP/IP的抽象， 网络编程肯定绕不过socket，绝大部分语言都提供了socket相关的API。 
+
+工作中直接对socket编程的机会不多，大多都是封装好的， 但是要理解socket在客户端和服务器端的区别，服务器端是如何维护连接的， 这就会引出一个重要的技术：I/O多路复用（select/poll/epoll) ，也是ngnix,redis等著名软件的基础。 
+
+I/O多路复用是I/O模型之一，其他还有同步阻塞，同步非阻塞，信号驱动和异步。 
+
+这方面最经典的书应该是《Unix网络编程了》。 
+
+《linux系统编程》
+
+这本书实在是太厚了，学下重要章节就好了。
+
+
+
+http://beej-cn.netdpi.net/
+
+
+
+http://beej.us/guide/bgnet/
+
+
+
+# Unix系统编程之文件
+
+我们为什么要学这一节呢？因为在Unix系统中，所有的都是文件，都离不开文件描述符。socket也不意外。所以在我们学习socket之前，我们需要学习文件描述符。
+
+我们先来看基础的：系统编程三大基石，系统调用，C库和C编译器。
+
+## 文件描述符
+
+我们来看文件描述符：
+
+对于内核而言，所有打开文件都由文件描述符引用。文件描述符是一个非负整数。当打开一个现存文件或创建一个新文件时，内核向进程返回一个文件描述符。当读、写一个文件时，用open或creat返回的文件描述符标识该文件，将其作为参数传送给read或write。
+按照惯例，UNIXshell使文件描述符0与进程的标准输入相结合，文件描述符1与标准输出相结合，文件描述符2与标准出错输出相结合。
+
+# 6. I/O复用：select和poll函数
+
+这个玩意是比较重要的，很多地方都是直接抄的这本书。
+
+## 6.1 概述
+
+我们先来看下什么是I/O复用：I/O multiplexing，指的是内核一旦发现进程指定的一个或者多个I/O条件就绪（也就是说输入已准备好被读取，或者描述符已能承接更多的输出），它就通知进程。这个能力称为I/O复用。由select和poll这两个函数支持的。
+
+有些系统提供了更为先进的让进程在一串事件上等待的机制。轮询设备（poll device）就是这样的机制之一。
+
+下面我们看下I/O多路复用的场景：
+
+- 当客户处理多个描述符（通常是交互式输入和网络套接字）时，必须使用I/O复用。
+- 一个客户同时处理多个套接字是可能的，不过比较少见。
+- 如果一个TCP服务器既要处理监听套接字，又要处理已连接套接字，一般就要使用I/O复用。
+- 如果一个服务器即要处理TCP，又要处理UDP，一般就要使用I/O复用。
+- 如果一个服务器要处理多个服务或者多个协议（例如我们将在13.5节讲述的inetd守护进程），一般就要使用I/O复用。
+
+## 6.2 I/O模型
+
+在进入主题之前，我们先来看下linux下可用的五种I/O模型之间的区别。
+
+一个输入操作通常包括两个不同的阶段：
+
+(1) 等待数据准备好；
+
+(2) 从内核向进程复制数据。
+
+对于一个套接字上的输入操作，第一步通常涉及等待数据从网络中到达。当所等待分组到达时，它被复制到内核中的某个缓冲区。第二步就是把数据从内核缓冲区复制到应用进程缓冲区。
+
+### 6.2.1 **阻塞式I/O模型**
+
+最流行的I/O模型是阻塞式I/O（blocking I/O）模型，本书到目前为止的所有例子都使用该模型。默认情形下，所有套接字都是阻塞的。以数据报套接字作为例子，我们有如图6-1所示的情形。
+
+<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200104235149.png" style="zoom:50%;" />
+
+我们使用UDP而不是TCP作为例子的原因在于就UDP而言，数据准备好读取的概念比较简单：要么整个数据报已经收到，要么还没有。然而对于TCP来说，诸如套接字低水位标记（low-water mark）等额外变量开始起作用，导致这个概念变得复杂。
+
+在本节的例子中，我们把recvfrom函数视为系统调用，因为我们正在区分应用进程和内核。不论它如何实现（在源自Berkeley的内核上是作为系统调用，在System V内核上是作为调用系统调用getmsg的函数），一般都会从在应用进程空间中运行切换到在内核空间中运行，一段时间之后再切换回来。
+
+在图6-1中，进程调用recvfrom，其系统调用直到数据报到达且被复制到应用进程的缓冲区中或者发生错误才返回。最常见的错误是系统调用被信号中断，如5.9节所述。我们说进程在从调用recvfrom开始到它返回的整段时间内是被阻塞的。recvfrom成功返回后，应用进程开始处理数据报。
+
+### 6.2.2. **非阻塞式I/O模型**
+
+进程把一个套接字设置成非阻塞是在通知内核：当所请求的I/O操作非得把本进程投入睡眠才能完成时，不要把本进程投入睡眠，**而是返回一个错误**。我们将在第16章中详细介绍非阻塞式I/O（nonblocking I/O），不过图6-2概要展示了我们即将考虑的例子。
+
+<img src="https://tva1.sinaimg.cn/large/006tNbRwgy1gakzbfjgsij30wm0ictjw.jpg" alt="image-20200105000904073" style="zoom:50%;" />
+
+前三次调用recvfrom时没有数据可返回，因此内核转而立即返回一个EWOULDBLOCK错误。第四次调用recvfrom时已有一个数据报准备好，它被复制到应用进程缓冲区，于是recvfrom成功返回。我们接着处理数据。
+
+当一个应用进程像这样对一个非阻塞描述符循环调用recvfrom时，我们称之为轮询（polling）。应用进程持续轮询内核，以查看某个操作是否就绪。这么做往往耗费大量CPU时间，不过这种模型偶尔也会遇到，通常是在专门提供某一种功能的系统中才有。
+
+### 6.2.3 I/O复用模型
+
+有了I/O复用（I/O multiplexing），我们就可以调用select或poll，阻塞在这两个系统调用中的某一个之上，而不是阻塞在真正的I/O系统调用上。图6-3概括展示了I/O复用模型。
+
+<img src="https://tva1.sinaimg.cn/large/006tNbRwgy1gakzeovzf2j30wq0jkdsg.jpg" alt="image-20200105001215884" style="zoom:50%;" />
+
+我们阻塞于select调用，等待数据报套接字变为可读。当select返回套接字可读这一条件时，我们调用recvfrom把所读数据报复制到应用进程缓冲区。
+
+比较图6-3和图6-1，I/O复用并不显得有什么优势（注意recvfrom的时间），事实上由于使用select需要两个而不是单个系统调用，I/O复用还稍有劣势。不过我们将在本章稍后看到，使用select的优势在于我们可以等待多个描述符就绪。
+
+与I/O复用密切相关的另一种I/O模型是在多线程中使用阻塞式I/O。这种模型与上述模型极为相似，但它没有使用select阻塞在多个文件描述符上，而是使用多个线程（每个文件描述符一个线程），这样每个线程都可以自由地调用诸如recvfrom之类的阻塞式I/O系统调用了。
+
+### 6.2.4 **信号驱动式I/O模型**
+
+我们也可以用信号，让内核在描述符就绪时发送SIGIO信号通知我们。我们称这种模型为信号驱动式I/O（signal-driven I/O），图6-4是它的概要展示。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105132910.png)
+
+我们首先开启套接字的信号驱动式I/O功能（我们将在25.2节讲解这个过程），并通过sigaction系统调用安装一个信号处理函数。该系统调用将立即返回，我们的进程继续工作，也就是说它没有被阻塞。当数据报准备好读取时，内核就为该进程产生一个SIGIO信号。我们随后既可以在信号处理函数中调用recvfrom读取数据报，并通知主循环数据已准备好待处理（这正是我们将在25.3节中所要做的事情），也可以立即通知主循环，让它读取数据报。
+
+无论如何处理SIGIO信号，这种模型的优势在于等待数据报到达期间进程不被阻塞。主循环可以继续执行，只要等待来自信号处理函数的通知：既可以是数据已准备好被处理，也可以是数据报已准备好被读取。
+
+### **6.2.5 异步I/O模型**
+
+异步I/O（asynchronous I/O）由POSIX规范定义。演变成当前POSIX规范的各种早期标准所定义的实时函数中存在的差异已经取得一致。一般地说，这些函数的工作机制是：告知内核启动某个操作，并让内核在整个操作（包括将数据从内核复制到我们自己的缓冲区）完成后通知我们。这种模型与前一节介绍的信号驱动模型的主要区别在于：信号驱动式I/O是由内核通知我们何时可以启动一个I/O操作，而异步I/O模型是由内核通知我们I/O操作何时完成。图6-5给出了一个例子。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105133529.png)
+
+我们调用aio_read函数（POSIX异步I/O函数以aio_或lio_开头），给内核传递描述符、缓冲区指针、缓冲区大小（与read相同的三个参数）和文件偏移（与lseek类似），并告诉内核当整个操作完成时如何通知我们。该系统调用立即返回，而且在等待I/O完成期间，我们的进程不被阻塞。本例子中我们假设要求内核在操作完成时产生某个信号。该信号直到数据已复制到应用进程缓冲区才产生，这一点不同于信号驱动式I/O模型。
+
+本书编写至此的时候，支持POSIX异步I/O模型的系统仍较罕见。我们不能确定这样的系统是否支持套接字上的这种模型。这儿我们只是用它作为一个与信号驱动式I/O模型相比照的例子。
+
+### **6.2.6 各种I/O模型的比较**
+
+图6-6对比了上述5种不同的I/O模型。可以看出，前4种模型的主要区别在于第一阶段，因为它们的第二阶段是一样的：在数据从内核复制到调用者的缓冲区期间，进程阻塞于recvfrom调用。相反，异步I/O模型在这两个阶段都要处理，从而不同于其他4种模型。
+
+![image-20200105134010680](https://tva1.sinaimg.cn/large/006tNbRwly1galmrb4n86j30wi0ji16w.jpg)
+
+### **6.2.7 同步I/O和异步I/O对比**
+
+POSIX把这两个术语定义如下：
+
+同步I/O操作（synchronous I/O opetation）导致请求进程阻塞，直到I/O操作完成；
+
+根据上述定义，我们的前4种模型——阻塞式I/O模型、非阻塞式I/O模型、I/O复用模型和信号驱动式I/O模型都是同步I/O模型，因为其中真正的I/O操作（recvfrom）将阻塞进程。只有异步I/O模型与POSIX定义的异步I/O相匹配。
+
+## 6.3 **select函数**
+
+我们不在阻塞在系统I/O上，而是阻塞在select上。这个教程不错：http://beej-cn.netdpi.net/07-advanced-technology/7-2-select
+
+该函数允许进程指示内核等待多个事件中的任何一个发生，并只在有一个或多个事件发生或经历一段指定的时间后才唤醒它。
+
+作为一个例子，我们可以调用select，告知内核仅在下列情况发生时才返回：
+
+- 集合{1，4，5}中的任何描述符准备好读；
+
+- 集合{2，7}中的任何描述符准备好写；
+
+- 集合{1，4}中的任何描述符有异常条件待处理；
+
+- 已经历了10.2秒。
+
+也就是说，我们调用select告知内核对哪些描述符（就读、写或异常条件）感兴趣以及等待多长时间。我们感兴趣的描述符不局限于套接字，任何描述符都可以使用select来测试。
+
+```cpp
+#include <sys/select.h>
+#include <sys/time.h>
+// 返回：若有就绪描述符则为其数目，若超时则为0，若出错则为-1
+int select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
+const struct timeval *timeout);
+```
+
+我们从该函数的最后一个参数timeout开始介绍，它告知内核等待所指定描述符中的任何一个就绪可花多长时间。其timeval结构用于指定这段时间的秒数和微秒数。
+
+```cpp
+struct timeval {
+
+long　 tv_sec;　　　/* seconds */
+
+long　 tv_usec;　　/* microseconds */
+
+};
+```
+
+这个参数有以下三种可能。
+
+(1) 永远等待下去：仅在有一个描述符准备好I/O时才返回。为此，我们把该参数设置为空指针。
+
+(2) 等待一段固定时间：在有一个描述符准备好I/O时返回，但是不超过由该参数所指向的timeval结构中指定的秒数和微秒数。
+
+(3) 根本不等待：检查描述符后立即返回，这称为轮询（polling）。为此，该参数必须指向一个timeval结构，而且其中的定时器值（由该结构指定的秒数和微秒数）必须为0。
+
+前两种情形的等待通常会被进程在等待期间捕获的信号中断，并从信号处理函数返回。
+
+尽管timeval结构允许我们指定了一个微秒级的分辨率，然而内核支持的真实分辨率往往粗糙得多。举例来说，许多Unix内核把超时值向上舍入成10 ms的倍数。另外还涉及调度延迟，也就是说定时器时间到后，内核还需花一点时间调度相应进程运行。
+
+timeout参数的const限定词表示它在函数返回时不会被select修改。举例来说，如果我们指定一个10s的超时值，不过在定时器到时之前select就返回了（结果可能是有一个或多个描述符就绪，也可能是得到EINTR错误），那么timeout参数所指向的timeval结构不会被更新成该函数返回时剩余的秒数。如果我们需要知道这个值，那么必须在调用select之前取得系统时间，它返回后再取得系统时间，两者相减就是该值（任何健壮的程序都得考虑到系统时间可能在这段时间内偶尔会被管理员或ntpd之类守护进程调整）。
+
+中间的三个参数readset、writeset和exceptset指定我们要让**内核测试读、写和异常条件的描述符**。目前支持的异常条件只有两个：
+
+(1) 某个套接字的带外数据的到达，我们将在第24章中详细讲述这个异常条件；
+
+(2) 某个已置为分组模式的伪终端存在可从其主端读取的控制状态信息，本书不讨论伪终端。
+
+如何给这3个参数中的每一个参数指定一个或多个描述符值是一个设计上的问题。select使用描述符集，通常是一个整数数组，其中每个整数中的每一位对应一个描述符。举例来说，假设使用32位整数，那么该数组的第一个元素对应于描述符0～31，第二个元素对应于描述符32～63，依此类推。所有这些实现细节都与应用程序无关，它们隐藏在名为fd_set的数据类型和以下四个宏中：
+
+```cpp
+void FD_ZERO(fd_set *fdset);　　　　　　 /* clear all bits in fdset */
+
+void FD_SET(int fd, fd_set *fdset);　　 /* turn on the bit for fd in fdset */
+
+void FD_CLR(int fd, fd_set *fdset);　　 /* trun off the bit for fd in fdset */
+
+int　FD_ISSET(int fd, fd_set *fdset);　 /* is the bit for fd on in fdset */
+```
+
+我们分配一个fd_set数据类型的描述符集，并用这些宏设置或测试该集合中的每一位，也可以用C语言中的赋值语句把它赋值成另外一个描述符集。
+
+举个例子，以下代码用于定义一个fd_set类型的变量，然后打开描述符1、4和5的对应位：
+
+```cpp
+fd_set　rset;
+
+FD_ZERO(&rset);　　　　 /* initialize the set：all bits off */
+
+FD_SET(1, &rset);　　　 /* turn on bit for fd 1 */
+
+FD_SET(4, &rset);　　　 /* turn on bit for fd 4 */
+
+FD_SET(5, &rset);　　　 /* turn on bit for fd 5 */
+```
+
+描述符集的初始化非常重要，因为作为自动变量分配的一个描述符集如果没有初始化，那么可能发生不可预期的后果。
+
+select函数的中间三个参数readset、writeset和exceptset中，如果我们对某一个的条件不感兴趣，就可以把它设为空指针。事实上，如果这三个指针均为空，我们就有了一个比Unix的sleep函数更为精确的定时器（sleep睡眠以秒为最小单位）。poll函数提供类似的功能。APUE的图C-9和图C-10给出了一个使用select和poll实现的sleep_us函数，它的睡眠以微秒为单位。
+
+maxfdp1参数指定待测试的描述符个数，它的值是待测试的最大描述符加1（因此我们把该参数命名为maxfdp1），描述符0, 1, 2, …，一直到maxfdp1-1均将被测试。
+
+头文件<sys/select.h>中定义的FD_SETSIZE常值是数据类型fd_set中的描述符总数，其值通常是1024，不过很少有程序用到那么多的描述符。maxfdp1参数迫使我们计算出所关心的最大描述符并告知内核该值。以前面给出的打开描述符1、4和5的代码为例，其maxfdp1值就是6。是6而不是5的原因在于：我们指定的是描述符的个数而非最大值，而描述符是从0开始的。
+
+存在这个参数以及计算其值的额外负担纯粹是为了效率原因。每个fd_set都有表示大量描述符（典型数量为1024）的空间，然而一个普通进程所用的数量却少得多。内核正是通过在进程与内核之间不复制描述符集中不必要的部分，从而不测试总为0的那些位来提高效率的（TCPv2的16.13节）。
+
+select函数修改由指针readset、writeset和exceptset所指向的描述符集，因而这三个参数都是值—结果参数。调用该函数时，我们指定所关心的描述符的值，该函数返回时，结果将指示哪些描述符已就绪。该函数返回后，我们使用FD_ISSET宏来测试fd_set数据类型中的描述符。描述符集内任何与未就绪描述符对应的位返回时均清成0。为此，每次重新调用select函数时，我们都得再次把所有描述符集内所关心的位均置为1。
+
+使用select时最常见的两个编程错误是：忘了对最大描述符加1；忘了描述符集是值-结果参数。第二个错误导致调用select时，描述符集内我们认为是1的位却被置为0。
+
+该函数的返回值表示跨所有描述符集的已就绪的总位数。如果在任何描述符就绪之前定时器到时，那么返回0。返回-1表示出错（这是可能发生的，譬如本函数被一个所捕获的信号中断）。
+
+### 6.3.1 描述符就绪条件
+
+我们一直在讨论等待某个描述符准备好I/O（读或写）或是等待其上发生一个待处理的异常条件（带外数据）。尽管可读性和可写性对于普通文件这样的描述符显而易见，然而对于引起select返回套接字“就绪”的条件我们必须讨论得更明确些（TCPv2的图16-52）。
+
+(1) 满足下列四个条件中的任何一个时，一个套接字准备好读。
+
+a) 该套接字接收缓冲区中的数据字节数大于等于套接字接收缓冲区低水位标记的当前大小。对这样的套接字执行读操作不会阻塞并将返回一个大于0的值（也就是返回准备好读入的数据）。我们可以使用SO_RCVLOWAT套接字选项设置该套接字的低水位标记。对于TCP和UDP套接字而言，其默认值为1。
+
+b) 该连接的读半部关闭（也就是接收了FIN的TCP连接）。对这样的套接字的读操作将不阻塞并返回0（也就是返回EOF）。
+
+c) 该套接字是一个监听套接字且已完成的连接数不为0。对这样的套接字的accept通常不会阻塞，不过我们将在15.6节讲解accept可能阻塞的一种时序条件。
+
+d) 其上有一个套接字错误待处理。对这样的套接字的读操作将不阻塞并返回-1（也就是返回一个错误），同时把errno设置成确切的错误条件。这些待处理错误（pending error）也可以通过指定SO_ERROR套接字选项调用getsockopt获取并清除。
+
+(2) 下列四个条件中的任何一个满足时，一个套接字准备好写。
+
+a) 该套接字发送缓冲区中的可用空间字节数大于等于套接字发送缓冲区低水位标记的当前大小，并且或者该套接字已连接，或者该套接字不需要连接（如UDP套接字）。这意味着如果我们把这样的套接字设置成非阻塞（第16章），写操作将不阻塞并返回一个正值（如由传输层接受的字节数）。我们可以使用SO_SNDLOWAT套接字选项来设置该套接字的低水位标记。对于TCP和UDP套接字而言，其默认值通常为2048。
+
+b) 该连接的写半部关闭。对这样的套接字的写操作将产生SIGPIPE信号（5.12节）。
+
+c) 使用非阻塞式connect的套接字已建立连接，或者connect已经以失败告终。
+
+d) 其上有一个套接字错误待处理。对这样的套接字的写操作将不阻塞并返回-1（也就是返回一个错误），同时把errno设置成确切的错误条件。这些待处理的错误也可以通过指定SO_ERROR套接字选项调用getsockopt获取并清除。
+
+(3) 如果一个套接字存在带外数据或者仍处于带外标记，那么它有异常条件待处理。（我们将在第24章中讲述带外数据。）
+
+我们对“可读性”和“可写性”的定义直接取自TCPv2第530～531页中内核的soreadable和sowriteable宏。与此类似，我们对套接字“异常条件”的定义取自同一页中的soo_select函数。
+
+注意：当某个套接字上发生错误时，它将由select标记为既可读又可写。
+
+接收低水位标记和发送低水位标记的目的在于：允许应用进程控制在select返回可读或可写条件之前有多少数据可读或有多大空间可用于写。举例来说，如果我们知道除非至少存在64个字节的数据，否则我们的应用进程没有任何有效工作可做，那么可以把接收低水位标记设置为64，以防少于64个字节的数据准备好读时select唤醒我们。
+
+任何UDP套接字只要其发送低水位标记小于等于发送缓冲区大小（默认应该总是这种关系）就总是可写的，这是因为UDP套接字不需要连接。
+
+图6-7汇总了上述导致select返回某个套接字就绪的条件。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105140647.png)
+
+
+
+### 6.3.2 **select的最大描述符数**
+
+早些时候我们说过，大多数应用程序不会用到许多描述符。譬如说我们很少能找到一个使用几百个描述符的应用程序。然而使用那么多描述符的应用程序确实存在，它们往往使用select来复选描述符。最初设计select时，操作系统通常对每个进程可用的最大描述符数设置了上限（4.2BSD的限制为31），select就使用相同的限制值。然而当今的Unix版本允许每个进程使用事实上无限数目的描述符（往往仅受限于内存总量和管理性限制），因此我们的问题是：这对select有什么影响？
+
+许多实现有类似于下面的声明，它取自4.4BSD的<sys/types.h>头文件：
+
+```cpp
+/*
+
+* select uses bitmasks of file descriptors in longs．These macros
+
+* manipulate such bit fields (the filesystem macros use chars).
+
+* FD_SETSIZE may be defined by the user, but the default here should
+
+* be enough for most uses.
+
+*/
+
+#ifndef FD_SETSIZE
+
+#define FD_SETSIZE 256
+
+#endif
+```
+
+这使我们想到，可以在包括该头文件之前把FD_SETSIZE定义为某个更大的值以增加select所用描述符集的大小。
+
+## 6.4 **str_cli函数**
+
+现在我们可以使用select重写5.5节中的str_cli函数了，这样服务器进程一终止，客户就能马上得到通知。早先那个版本的问题在于：当套接字上发生某些事件时，客户可能阻塞于fgets调用。新版本改为阻塞于select调用，或是等待标准输入可读，或是等待套接字可读。图6-8展示了调用select所处理的各种条件。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105145055.png)
+
+客户的套接字上的三个条件处理如下。
+
+(1) 如果对端TCP发送数据，那么该套接字变为可读，并且read返回一个大于0的值（即读入数据的字节数）。
+
+(2) 如果对端TCP发送一个FIN（对端进程终止），那么该套接字变为可读，并且read返回0（EOF）。
+
+(3) 如果对端TCP发送一个RST（对端主机崩溃并重新启动），那么该套接字变为可读，并且read返回-1，而errno中含有确切的错误码。
+
+图6-9给出了这个新版本的源代码。
+
+**调用select**
+
+8～13 我们只需要一个用于检查可读性的描述符集。该集合由FD_ZERO初始化，并用FD_SET打开两位：一位对应于标准I/O文件指针fp，一位对应于套接字sockfd。fileno函数把标准I/O文件指针转换为对应的描述符。select（和poll）只工作在描述符上。
+
+计算出两个描述符中的较大值后，调用select。在该调用中，写集合指针和异常集合指针都是空指针。最后一个参数（时间限制）也是空指针，因为我们希望本调用阻塞到某个描述符就绪为止。
+
+**处理可读套接字**
+
+14～18 如果在select返回时套接字是可读的，那就先用readline读入回射文本行，再用fputs输出它。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105145334.png)
+
+**处理可读输入**
+
+19～23 如果标准输入可读，那就先用fgets读入一行文本，再用writen把它写到套接字中。
+
+请注意，这个版本使用了与5.5节的版本相同的四个I/O函数：fgets、writen、readline和fputs，不过它们在本函数中的驱动流发生了变化。新的版本是由select调用来驱动的，而旧的版本则是由fgets调用来驱动的。与图5-5相比，图6-9中的代码仅增加了几行，就大大提高了客户程序的健壮性。
+
+## 6.10 **poll函数**
+
+poll函数起源于SVR3，最初局限于流设备（第31章）。SVR4取消了这种限制，允许poll工作在任何描述符上。poll提供的功能与select类似，不过在处理流设备时，它能够提供额外的信息。
+
+```cpp
+#include <poll.h>
+
+int poll(struct pollfd *fdarray, unsigned long nfds, int timeout);
+
+返回：若有就绪描述符则为其数目，若超时则为0，若出错则为-1
+```
+
+第一个参数是指向一个结构数组第一个元素的指针。每个数组元素都是一个pollfd结构，用于指定测试某个给定描述符fd的条件。
+
+```cpp
+struct{
+int fd; 
+short　events;　　　/* events of interest on fd */
+short　revents;　　 /* events that occurred on fd */
+};
+```
+
+要测试的条件由events成员指定，函数在相应的revents成员中返回该描述符的状态。（每个描述符都有两个变量，一个为调用值，另一个为返回结果，从而避免使用值—结果参数。回想select函数的中间三个参数都是值—结果参数。）这两个成员中的每一个都由指定某个特定条件的一位或多位构成。图6-23列出了用于指定events标志以及测试revents标志的一些常值。
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20200105172312.png)
+
+我们将该图分为三个部分：第一部分是处理输入的四个常值，第二部分是处理输出的三个常值，第三部分是处理错误的三个常值。其中第三部分的三个常值不能在events中设置，但是当相应条件存在时就在revents中返回。
+
+poll识别三类数据：普通（normal）、优先级带（priority band）和高优先级（high priority）。这些术语均出自基于流的实现（图31-5）。
+
+就TCP和UDP套接字而言，以下条件引起poll返回特定的revent。不幸的是，POSIX在其poll的定义中留了许多空洞（也就是说有多种方法可返回相同的条件）。
+
+所有正规TCP数据和所有UDP数据都被认为是普通数据。
+
+TCP的带外数据（第24章）被认为是优先级带数据。
+
+当TCP连接的读半部关闭时（譬如收到了一个来自对端的FIN），也被认为是普通数据，随后的读操作将返回0。
+
+TCP连接存在错误既可认为是普通数据，也可认为是错误（POLLERR）。无论哪种情况，随后的读操作将返回-1，并把errno设置成合适的值。这可用于处理诸如接收到RST或发生超时等条件。
+
+在监听套接字上有新的连接可用既可认为是普通数据，也可认为是优先级数据。大多数实现视之为普通数据。
+
+非阻塞式connect的完成被认为是使相应套接字可写。
+
+结构数组中元素的个数是由nfds参数指定。
+
+timeout参数指定poll函数返回前等待多长时间。它是一个指定应等待毫秒数的正值。图6-24给出了它的可能取值。
+
+![img](data:image/jpeg;base64,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)
+
+图6-24 poll的timeout参数值
+
+INFTIM常值被定义为一个负值。如果系统不能提供毫秒级精度的定时器，该值就向上舍入到最接近的支持值。
+
+POSIX规范要求在头文件<poll.h>中定义INFTIM，不过许多系统仍然把它定义在头文件<sys/stropts.h>中。
+
+正如select，给poll指定的任何超时值都受限于实际系统实现的时钟分辨率（通常是10 ms）。
+
+当发生错误时，poll函数的返回值为-1，若定时器到时之前没有任何描述符就绪，则返回0，否则返回就绪描述符的个数，即revents成员值非0的描述符个数。
+
+如果我们不再关心某个特定描述符，那么可以把与它对应的pollfd结构的fd成员设置成一个负值。poll函数将忽略这样的pollfd结构的events成员，返回时将它的revents成员的值置为0。
+
+回顾6.3节结尾处我们就FD_SETSIZE以及就每个描述符集中最大描述符数目相比每个进程中最大描述符数目展开的讨论。有了poll就不再有那样的问题了，因为分配一个pollfd结构的数组并把该数组中元素的数目通知内核成了调用者的责任。内核不再需要知道类似fd_set的固定大小的数据类型。
+
