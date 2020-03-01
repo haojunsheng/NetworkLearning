@@ -1,4 +1,36 @@
 <!--ts-->
+   * [TCP那些事](#tcp那些事)
+            * [TCP头格式](#tcp头格式)
+            * [TCP的状态机](#tcp的状态机)
+            * [数据传输中的Sequence Number](#数据传输中的sequence-number)
+            * [TCP重传机制](#tcp重传机制)
+               * [超时重传机制](#超时重传机制)
+               * [快速重传机制](#快速重传机制)
+               * [SACK 方法](#sack-方法)
+               * [Duplicate SACK – 重复收到数据的问题](#duplicate-sack--重复收到数据的问题)
+            * [TCP的RTT算法](#tcp的rtt算法)
+               * [经典算法](#经典算法)
+               * [Karn / Partridge 算法](#karn--partridge-算法)
+               * [Jacobson / Karels 算法](#jacobson--karels-算法)
+            * [TCP滑动窗口](#tcp滑动窗口)
+               * [Zero Window](#zero-window)
+               * [Silly Window Syndrome](#silly-window-syndrome)
+            * [TCP的拥塞处理 – Congestion Handling](#tcp的拥塞处理--congestion-handling)
+               * [慢热启动算法 – Slow Start](#慢热启动算法--slow-start)
+               * [拥塞避免算法 – Congestion Avoidance](#拥塞避免算法--congestion-avoidance)
+               * [拥塞状态时的算法](#拥塞状态时的算法)
+               * [快速恢复算法 – Fast Recovery](#快速恢复算法--fast-recovery)
+               * [算法示意图](#算法示意图)
+               * [FACK算法](#fack算法)
+            * [其它拥塞控制算法简介](#其它拥塞控制算法简介)
+               * [<strong>TCP Vegas 拥塞控制算法</strong>](#tcp-vegas-拥塞控制算法)
+               * [HSTCP(High Speed TCP) 算法](#hstcphigh-speed-tcp-算法)
+               * [TCP BIC 算法](#tcp-bic-算法)
+               * [TCP WestWood算法](#tcp-westwood算法)
+               * [其它](#其它)
+            * [后记](#后记)
+
+<!-- Added by: anapodoton, at: Sun Mar  1 22:07:01 CST 2020 -->
 
 <!--te-->
 
@@ -27,7 +59,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 接下来，我们来看一下TCP头的格式
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/TCP-Header-01.jpg)TCP头格式（[图片来源](http://nmap.org/book/tcpip-ref.html)）
+![img](img/TCP-Header-01.jpg)TCP头格式（[图片来源](http://nmap.org/book/tcpip-ref.html)）
 
 你需要注意这么几点：
 
@@ -41,7 +73,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 关于其它的东西，可以参看下面的图示
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/TCP-Header-02.jpg)
+![img](img/TCP-Header-02.jpg)
 
 （[图片来源](http://nmap.org/book/tcpip-ref.html)）
 
@@ -51,7 +83,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 下面是：“**TCP协议的状态机**”（[图片来源](http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm)） 和 “**TCP建链接**”、“**TCP断链接**”、“**传数据**” 的对照图，我把两个图并排放在一起，这样方便在你对照着看。另外，下面这两个图非常非常的重要，你一定要记牢。（吐个槽：看到这样复杂的状态机，就知道这个协议有多复杂，复杂的东西总是有很多坑爹的事情，所以TCP协议其实也挺坑爹的）
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcpfsm.png) ![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp_open_close.jpg)
+<img src="img/tcpfsm.png" alt="img" style="zoom:50%;" /> <img src="https://coolshell.cn/wp-content/uploads/2014/05/tcp_open_close.jpg" alt="img" style="zoom:50%;" />
 
 很多人会问，为什么建链接要3次握手，断链接需要4次挥手？
 
@@ -59,7 +91,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 - **对于4次挥手，**其实你仔细看是2次，因为TCP是全双工的，所以，发送方和接收方都需要Fin和Ack。只不过，有一方是被动的，所以看上去就成了所谓的4次挥手。如果两边同时断连接，那就会就进入到CLOSING状态，然后到达TIME_WAIT状态。下图是双方同时断连接的示意图（你同样可以对照着TCP状态机看）：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcpclosesimul.png)
+<img src="img/tcpclosesimul.png" alt="img" style="zoom:50%;" />
 两端同时断连接（[图片来源](http://www.tcpipguide.com/free/t_TCPConnectionTermination-4.htm)）
 
  
@@ -90,7 +122,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 下图是我从Wireshark中截了个我在访问coolshell.cn时的有数据传输的图给你看一下，SeqNum是怎么变的。（使用Wireshark菜单中的Statistics ->Flow Graph… ）
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp_data_seq_num.jpg)
+![img](img/tcp_data_seq_num.jpg)
 
 你可以看到，**SeqNum的增加是和传输的字节数相关的**。上图中，三次握手后，来了两个Len:1440的包，而第二个包的SeqNum就成了1441。然后第一个ACK回的是1441，表示第一个1440收到了。
 
@@ -121,7 +153,7 @@ TCP要保证所有的数据包都可以到达，所以，必需要有重传机�
 
 比如：如果发送方发出了1，2，3，4，5份数据，第一份先到送了，于是就ack回2，结果2因为某些原因没收到，3到达了，于是还是ack回2，后面的4和5都到了，但是还是ack回2，因为2还是没有收到，于是发送端收到了三个ack=2的确认，知道了2还没有到，于是就马上重转2。然后，接收端收到了2，此时因为3，4，5都收到了，于是ack回6。示意图如下：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/FASTIncast021.png)
+![img](img/FASTIncast021.png)
 
 Fast Retransmit只解决了一个问题，就是timeout的问题，它依然面临一个艰难的选择，就是，是重传之前的一个还是重传所有的问题。对于上面的示例来说，是重传#2呢还是重传#2，#3，#4，#5呢？因为发送端并不清楚这连续的3个ack(2)是谁传回来的？也许发送端发了20份数据，是#6，#10，#20传来的呢。这样，发送端很有可能要重传从2到20的这堆数据（这就是某些TCP的实际的实现）。可见，这是一把双刃剑。
 
@@ -129,7 +161,7 @@ Fast Retransmit只解决了一个问题，就是timeout的问题，它依然面�
 
 另外一种更好的方式叫：**Selective Acknowledgment (SACK)**（参看[RFC 2018](http://tools.ietf.org/html/rfc2018)），这种方式需要在TCP头里加一个SACK的东西，ACK还是Fast Retransmit的ACK，SACK则是汇报收到的数据碎版。参看下图：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp_sack_example-1024x577.jpg)
+![img](img/tcp_sack_example-1024x577.jpg)
 
 这样，在发送端就可以根据回传的SACK来知道哪些数据到了，哪些没有到。于是就优化了Fast Retransmit的算法。当然，这个协议需要两边都支持。在 Linux下，可以通过**tcp_sack**参数打开这个功能（Linux 2.4后默认打开）。
 
@@ -225,7 +257,7 @@ Linux下的tcp_dsack参数用于开启这个功能（Linux 2.4后默认打开）
 - 情况（a）是ack没回来，所以重传。如果你计算第一次发送和ACK的时间，那么，明显算大了。
 - 情况（b）是ack回来慢了，但是导致了重传，但刚重传不一会儿，之前ACK就回来了。如果你是算重传的时间和ACK回来的时间的差，就会算短了。
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/Karn-Partridge-Algorithm.jpg)
+![img](img/Karn-Partridge-Algorithm.jpg)
 
 所以1987年的时候，搞了一个叫[Karn / Partridge Algorithm](http://en.wikipedia.org/wiki/Karn's_Algorithm)，这个算法的最大特点是——**忽略重传，不把重传的RTT做采样**（你看，你不需要去解决不存在的问题）。
 
@@ -249,7 +281,7 @@ Linux下的tcp_dsack参数用于开启这个功能（Linux 2.4后默认打开）
 
 所以，TCP引入了一些技术和设计来做网络流控，Sliding Window是其中一个技术。 前面我们说过，**TCP头里有一个字段叫Window，又叫Advertised-Window，这个字段是接收端告诉发送端自己还有多少缓冲区可以接收数据**。**于是发送端就可以根据这个接收端的处理能力来发送数据，而不会导致接收端处理不过来**。 为了说明滑动窗口，我们需要先看一下TCP缓冲区的一些数据结构：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/sliding_window.jpg)
+![img](img/sliding_window.jpg)
 
 上图中，我们可以看到：
 
@@ -265,7 +297,7 @@ Linux下的tcp_dsack参数用于开启这个功能（Linux 2.4后默认打开）
 
 下面我们来看一下发送方的滑动窗口示意图：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcpswwindows.png)
+![img](img/tcpswwindows.png)
 
 （[图片来源](http://www.tcpipguide.com/free/t_TCPSlidingWindowAcknowledgmentSystemForDataTranspo-6.htm)）
 
@@ -278,11 +310,11 @@ Linux下的tcp_dsack参数用于开启这个功能（Linux 2.4后默认打开）
 
 下面是个滑动后的示意图（收到36的ack，并发出了46-51的字节）：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcpswslide.png)
+![img](img/tcpswslide.png)
 
 下面我们来看一个接受端控制发送端的图示：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcpswflow.png)
+![img](img/tcpswflow.png)
 
 （[图片来源](http://www.tcpipguide.com/free/t_TCPWindowSizeAdjustmentandFlowControl-2.htm)）
 
@@ -351,7 +383,7 @@ Silly Window Syndrome翻译成中文就是“糊涂窗口综合症”。正如�
 
 所以，我们可以看到，如果网速很快的话，ACK也会返回得快，RTT也会短，那么，这个慢启动就一点也不慢。下图说明了这个过程。
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp.slow_.start_.jpg)
+![img](img/tcp.slow_.start_.jpg)
 
 这里，我需要提一下的是一篇Google的论文《[An Argument for Increasing TCP’s Initial Congestion Window](http://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/36640.pdf)》Linux 3.0后采用了这篇论文的建议——把cwnd 初始化成了 10个MSS。 而Linux 3.0以前，比如2.6，Linux采用了[RFC3390](http://www.rfc-editor.org/rfc/rfc3390.txt)，cwnd是跟MSS的值来变的，如果MSS< 1095，则cwnd = 4；如果MSS>2190，则cwnd=2；其它情况下，则是3。
 
@@ -420,7 +452,7 @@ Silly Window Syndrome翻译成中文就是“糊涂窗口综合症”。正如�
 
 下面我们来看一个简单的图示以同时看一下上面的各种算法的样子：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp.fr_-1024x359.jpg)
+![img](img/tcp.fr_-1024x359.jpg)
 
  
 
@@ -444,7 +476,7 @@ FACK全称Forward Acknowledgment 算法，论文地址在这里（PDF）[Forward
 
 这个算法1994年被提出，它主要对TCP Reno 做了些修改。这个算法通过对RTT的非常重的监控来计算一个基准RTT。然后通过这个基准RTT来估计当前的网络实际带宽，如果实际带宽比我们的期望的带宽要小或是要多的活，那么就开始线性地减少或增加cwnd的大小。如果这个计算出来的RTT大于了Timeout后，那么，不等ack超时就直接重传。（Vegas 的核心思想是用RTT的值来影响拥塞窗口，而不是通过丢包） 这个算法的论文是《[TCP Vegas: End to End Congestion Avoidance on a Global Internet](http://www.cs.cmu.edu/~srini/15-744/F02/readings/BP95.pdf)》这篇论文给了Vegas和 New Reno的对比：
 
-![img](https://coolshell.cn/wp-content/uploads/2014/05/tcp_vegas_newreno-1024x555.jpg)
+![img](img/tcp_vegas_newreno-1024x555.jpg)
 
 关于这个算法实现，你可以参看Linux源码：[/net/ipv4/tcp_vegas.h](http://lxr.free-electrons.com/source/net/ipv4/tcp_vegas.h)， [/net/ipv4/tcp_vegas.c](http://lxr.free-electrons.com/source/net/ipv4/tcp_vegas.c)
 

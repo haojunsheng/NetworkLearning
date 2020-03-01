@@ -5,13 +5,14 @@
          * [网络层](#网络层)
          * [传输层](#传输层)
          * [应用层](#应用层)
+         * [总结](#总结)
       * [如何链接Linux](#如何链接linux)
       * [常用网络命令](#常用网络命令)
       * [网络帧错](#网络帧错)
       * [DNS服务器](#dns服务器)
       * [www服务器](#www服务器)
 
-<!-- Added by: anapodoton, at: Mon Dec 30 14:42:30 CST 2019 -->
+<!-- Added by: anapodoton, at: Sun Mar  1 22:02:59 CST 2020 -->
 
 <!--te-->
 
@@ -21,7 +22,7 @@
 
 我们学习计算机网络，肯定是要看7层网络体系的。分别是应用层，表示层，会话层，传输层，网络层，数据链路层和物理层。但是分得这么详细，工程上实现起来是很麻烦的，我们为了方便实现，进行了简化。如下所示：
 
-![OSI 与 TCP/IP 协议之相关性](http://cn.linux.vbird.org/linux_server/0110network_basic_files/osi_tcpip.gif)
+![OSI 与 TCP/IP 协议之相关性](img/osi_tcpip.gif)
 
 下面我们开始研究：
 
@@ -33,7 +34,7 @@
 
 我们来看下MAC (Media Access Control) ，是网卡的编号，看一下其封装的格式：
 
-![以太网络的 MAC 讯框](http://cn.linux.vbird.org/linux_server/0110network_basic_files/mac.png)
+![以太网络的 MAC 讯框](img/mac.png)
 
 里面还有一个细节：MTU (Maximum Transmission Unit, 最大传输单位)。虽然修改这个值可以减少拆包的概率，但是不是所有的网络都支持，所以不建议修改。
 
@@ -53,7 +54,7 @@
 
 先来看基础知识，首先要看的自然是IP的结构。IP分为IPv4和IPv6，我们主要关注前者。IP 封包可以达到 65535 bytes 这么大，在比 MAC 大的情况下，我们的操作系统会对 IP 进行拆解的动作
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191221212432.png)
+![](img/20191221212432.png)
 
 我们从图中看到，每一行所占用的位数为 32 bits。详细解释如下：
 
@@ -72,7 +73,7 @@
   - M：若为 0 表示此 IP 为最后分段，若为 1 表示非最后分段。
 - Fragment Offset(分段偏移)：表示目前这个 IP 分段在原始的 IP 封包中所占的位置。就有点像是序号啦，有这个序号才能将所有的小 IP 分段组合成为原本的 IP 封包大小嘛！透过 Total Length, Identification, Flags 以及这个 Fragment Offset 就能够将小 IP 分段在收受端组合起来啰！
 - **Time To Live(TTL, 存活时间)**：表示这个 IP 封包的存活时间，范围为 0-255。当这个 IP 封包通过一个路由器时， TTL 就会减一，当 TTL 为 0 时，这个封包将会被直接丢弃。说实在的，要让 IP 封包通过 255 个路由器，还挺难的。
-- **Protocol Number(协定代码)**：来自传输层与网络层本身的其他数据都是放置在 IP 封包当中的，我们可以在 IP 表头记载这个 IP 封包内的资料是啥， 在这个字段就是记载每种数据封包的内容啦！在这个字段记载的代码与相关的封包协议名称如下所示：![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191221213054.png)
+- **Protocol Number(协定代码)**：来自传输层与网络层本身的其他数据都是放置在 IP 封包当中的，我们可以在 IP 表头记载这个 IP 封包内的资料是啥， 在这个字段就是记载每种数据封包的内容啦！在这个字段记载的代码与相关的封包协议名称如下所示：![](img/20191221213054.png)
 - Header Checksum(表头检查码)：用来检查这个 IP 表头的错误检验之用。
 - **Source Address**：还用讲吗？当然是来源的 IP 地址，从这里我们也知道 IP 是 32 位喔！
 - **Destination Address**：有来源还需要有目标才能传送，这里就是目标的 IP 地址。
@@ -83,7 +84,7 @@
 
 上面我们主要看了IP的结构，并且知道了32的IP地址是很重要的，这32的IP地址怎么使用，是个大学问。二进制数据实在是太难记了，我们8位为一组，分为4段。大概是这样0.0.0.0 一直到 255.255.255.255。当然，在实际应用中，不是这么分配的，就像我们每个人的姓名由姓和名组成，IP地址也是，由Net_ID (网域号码)与 Host_ID (主机号码)组成。为了方便管理，我们把IP进行了分级：
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191221234301.png" style="zoom:50%;" />
+<img src="img/20191221234301.png" style="zoom:50%;" />
 
 我们只需要关注ABC三级即可。
 
@@ -93,21 +94,19 @@
 - Class B：172.16.0.0 - 172.31.255.255
 - Class C：192.168.0.0 - 192.168.255.255
 
-
-
 private IP的好处是可以保护内部的电脑，也可以增加上网的主机的数量。需要借助于NAT（Network Address Translation，网络地址转换）技术，主要包括静态地址转换和动态地址转换。
 
-
+可以通过DHCP来向管理员获取IP地址。
 
 我们前面管理IP地址，只是分为了网络地址+主机地址来管理，事实上，在企业内部进行管理IP地址的时候，也可以进行更加仔细的管理，比如一个公司有2个部门，想要分开来管理，就可以向主机地址借一位来作为网络地址。
 
 于是我们就引入了子网掩码的概念了（**Netmask**）。我们来详细的看：
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222000559.png)
+![](img/20191222000559.png)
 
 注意，子网掩码的概念是网络位全为1，主机位全为0。除此之外，还有2个保留地址，第一个是该网段的IP，最后一个是广播地址。
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222000735.png)
+![](img/20191222000735.png)
 
 同时我们规定，A类地址的子网掩码是255.0.0.0,B类是255.255.0.0，C类地址的子网掩码是255.255.255.0。需要牢记。
 
@@ -151,11 +150,11 @@ Destination     Gateway         Genmask         Flags Metric Ref  Use Iface
 
 我们可以使用ifconfig eth0来获取本机的mac地址。
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222152640.png)
+![](img/20191222152640.png)
 
 可以使用arp -n来获取arp表格（20分钟更新一次）
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222152900.png)
+![](img/20191222152900.png)
 
 到现在这里还有一个问题，我们需要保证网络连接的正确性，引入了ICMP ，全名是『 Internet Control Message Protocol, 因特网讯息控制协议 』。ICMP 是一个错误侦测与回报的机制，最大的功能就是可以确保我们网络的联机状态与联机的正确性。封装在IP层。
 
@@ -169,7 +168,7 @@ Destination     Gateway         Genmask         Flags Metric Ref  Use Iface
 
 TCP长成这样：
 
-![image-20191222153637824](https://tva1.sinaimg.cn/large/006tNbRwly1ga5jg78kg0j30tk0eu408.jpg)
+![image-20191222153637824](img/006tNbRwly1ga5jg78kg0j30tk0eu408.jpg)
 
 先来详细分析下：
 
@@ -224,7 +223,7 @@ TCP长成这样：
 
 看完TCP，我们来看UDP，User Datagram Protocol,长成这样：
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222154704.png)
+![](img/20191222154704.png)
 
 我们需要区分TCP和UDP，这个玩意，在面试中是很常见的。
 
@@ -259,7 +258,7 @@ urn:oasis:names:specification:docbook:dtd:xml:4.1.2
 
 URI 用字符串标识某一互联网资源，而 URL 表示资源的地点(互联 网上所处的位置)。可见 URL 是 URI 的子集。 
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223122321.png)
+![](img/20191223122321-20200301220034427.png)
 
 我们需要理解以下核心概念；
 
@@ -279,7 +278,7 @@ URI 用字符串标识某一互联网资源，而 URL 表示资源的地点(互�
 
 
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223123304.png)
+![](img/20191223123304-20200301220036698.png)
 
 我们知道http使用了TCP，每次建立连接需要经过三次握手，很少消耗资源，为了优化，引入了HTTP Persistent Connections，也称作HTTP keep-alive。
 
@@ -287,7 +286,7 @@ URI 用字符串标识某一互联网资源，而 URL 表示资源的地点(互�
 
 下面我们看下http的报文：
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223141942.png" style="zoom:25%;" />
+<img src="img/20191223141942-20200301220040969.png" style="zoom:25%;" />
 
 为了进行优化，我们可以进行压缩，常用的压缩有gzip,**compress**等。此外，在发送大文件的时候，我们可以把数据分块发送，分块传输编码(Chunked Transfer Coding) 。
 
@@ -295,7 +294,7 @@ URI 用字符串标识某一互联网资源，而 URL 表示资源的地点(互�
 
 此外，http的状态码也是十分重要的，先浏览下：
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223143831.png)
+![](img/20191223143831-20200301220043021.png)
 
 我们看几个常见的，先来看2XX 的响应结果表明请求被正常处理了，200代表成功，204代表处理成功，但是没有可返回的资源，**206 Partial Content** 表示返回部分数据。
 
@@ -311,17 +310,17 @@ URI 用字符串标识某一互联网资源，而 URL 表示资源的地点(互�
 
 http的报文首部是十分重要的，我们来看下：
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223150347.png" style="zoom:50%;" />
+<img src="img/20191223150347-20200301220045607.png" style="zoom:50%;" />
 
 详细的看下面：
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223150510.png" style="zoom:50%;" />
+<img src="img/20191223150510-20200301220049359.png" style="zoom:50%;" />
 
 <img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223150536.png" style="zoom:50%;" />
 
 具体来看，几个比较重要的，**Cache-Control** ，Cache-Control: private, max-age=0, no-cache 
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223150929.png" style="zoom:50%;" />
+<img src="img/20191223150929-20200301220103578.png" style="zoom:50%;" />
 
 Connection也是比较重要的，主要有两个作用，控制不再转发给代理的首部字段 ，管理持久连接。
 
@@ -345,73 +344,38 @@ Connection也是比较重要的，主要有两个作用，控制不再转发给�
 
 当然，CGI没有一家独大，Java推出了Servlet（Server+Applet ）。
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191223153740.png" style="zoom:50%;" />
+<img src="img/20191223153740-20200301220107456.png" style="zoom:50%;" />
 
 我们可以看到CGI，由于每次接到请求，程序都要跟着启动一次。因此 一旦访问量过大，Web 服务器要承担相当大的负载。而 Servlet 运行 在与 Web 服务器相同的进程中，因此受到的负载较小。
 
-
-
-语言不是重点，尤其是你已经会一门语言的情况下，后端编程最最基本的技术是这些：
-
-1.浏览器和服务器是怎么打交道的？
-
-重点就是HTTP协议。
-
-\2. 理解url 和 代码之间的关联， 例如 www.xxx.com?action=login 这样的url 是怎么和后端的业务代码关联起来的？
-
-这样的规则是在哪里定义的？用代码、注解还是配置文件？
-
-后端的业务代码是怎么组织的？相信现在不会有人把业务逻辑都写到Servlet当中了， 所以需要很多MVC 框架像Struts , SpringMVC 来组织代码，让系统清晰易懂。
-
-3.数据的验证、转换和绑定
-
-如何保证浏览器发过来的数据是符合要求的？例如不能为空、不超过8个字符、两个密码必须相等.... ， 出错了得给出错误提示。
-
-浏览器发过来的数据都是形如username=liuxin&password=123456这样简单的文本， 但是后台程序却有着丰富的数据类型，什么String, Date ,Integer等等。所以需要把文本变成指定语言的类型，如何做转换？
-
-类型转换以后， 后端的业务代码怎么才能有效的使用呢？
-
-最简单的就是弄一个key : value 这个样的Map 出来， 业务代码直接用map.get(key) 即可，但是这样做缺乏“契约”，非常难以理解。
-
-高级一点的可以把页面发来的数据直接绑定到对象的属性上， 并且支持数组，嵌套等复杂的结构。
-
-例如user.name=liuxin&user.password=123456 可以绑定到一个叫User的对象， 其中有两个属性userName和password。
-
-\4. 数据库访问
-
-这一块是比较麻烦的， 毕竟面向对象(OO)世界和关系(Relational)数据库之间存在着天然的鸿沟。
-
-对于简单的应用， 直接写点JDBC就够用了，只需要掌握Connection, Statement , Resultset这三个基础。
-
-复杂点的需要用O/R Mapping 框架来搞定，例如 Hibernate, MyBatis ，还有RoR的ActiveRecord。
-
-这其中比较棘手的就是表之间的关联， 就是所谓的一对多， 一对一， 多对多这样的关系， 如何在面向对象的世界里描述。
-
-扩展开去，还需要处理连接池， 事务，锁 等各种烦人问题。
-
-\5. 业务代码的执行
-
-把业务代码放到哪里？代码该怎么组织？用事务脚本还是领域模型？贫血还是充血？
-
-6.如何把对象变成json和其他格式，让前端使用。
-
-原来的后端会用模板（JSP,Veloctiy ,FreeMaker等）生成页面，现在基本上是通过API提供数据了，需要把Java/Python对象变成JSON等格式来传输到前端。
-
-搞定了前面这几点，就搞定了一个基本的网站后端了。
-
-如果你仅仅是想了解下后端编程是什么样子，可以直接去学学框架，Java可以直接学Springboot，MyBatis， Python可以学Django, Flask，这些框架的抽象程度和封装程度都非常高，把上面所说的技术点都给屏蔽了，只要会用，就能开发后端程序。
-
-如果你想深入学习后端编程，强烈建议：不要一上来就学框架。
-
-要先用这些语言提供的最基本的能力，把这些技术点自己做一下，然后进入框架的世界，这样理解会非常深刻。
-
-例如Java， 它提供了Web开发最最基本的功能：Servlet 和JDBC，Python也是类似，有WSGI, PyMySQL可以直接使用，用他们就可以做URL和代码的映射，数据的转换和绑定，数据库的访问。
-
-
-
 总结下，比较常用的概念：Router（路由器），FireWall（防火墙），NAT,DHCP,DNS,Proxy。
 
+### 总结
 
+- 虽然目前的网络媒体多以以太网络为标准，但网络媒体不只有以太网络而已；
+- Internet 主要是由 Internet Network Information Center (INTERNIC) 所维护；
+- 以太网络的 RJ-45 网络线，由于 568A/568B 接头的不同而又分为并行线与跳线；
+- 以太网络上最重要的传输数据为 Carrier Sense Multiple Access with Collision Detect (CSMA/CD) 技术， 至于传输过程当中，最重要的 MAC 讯框内以硬件地址 (hardware address) 数据最为重要；
+- 透过八蕊的网络线 (Cat 5 以上等级)，现在的以太网络可以支持全双工模式；
+- OSI 七层协议为一个网络模型 (model) ，并非硬性规定。这七层协议可以协助软硬件开发有一个基本的准则， 且每一分层各自独立，方便使用者开发；
+- 现今的网络基础是架构在 TCP/IP 这个通讯协议上面；
+- 数据链结层里重要的信息为 MAC (Media Access Control)，亦可称为硬件地址，而 ARP Table 可以用来对应 MAC 与软件地址 ( IP ) ；
+- 在网络媒体方面， Hub 为共享媒体，因此可能会有封包碰撞的问题，至于 Switch 由于加入了 switch port 与 MAC 的对应，因此已经克服了封包碰撞的问题，也就是说，Switch 并不是共享媒体；
+- IP 为 32 bits 所组成的，为了适应人类的记忆，因此转成四组十进制的数据；
+- IP 主要分为 Net ID 与 Host ID 两部份，加上 Netmask 这个参数后，可以设定『网域』的概念；
+- 根据 IP 网域的大小，可将 IP 的等级分为 A, B, C 三种常见的等级；
+- Loopback 这个网段在 127.0.0.0/8 ，用在每个操作系统内部的循环测试中。
+- 网域可继续分成更小的网域 (subnetwork)，主要是透过将 Host_ID 借位成为 Net_ID 的技术；
+- IP 只有两种，就是 Public IP 与 Private IP ，中文应该翻译为 公共 IP 与 私有(或保留) IP，私有 IP 与私有路由不可以直接连接到 Internet 上；
+- 每一部主机都有自己的路由表，这个路由表规定了封包的传送途径，在路由表当中，最重要者为默认的通讯闸 ( Gateway/Router )；
+- TCP 协议的表头数据当中，那个 Code (control flags) 所带有的 ACK, SYN, FIN 等为常见的旗标， 可以控制封包的联机成功与否；
+- TCP 与 IP 的 IP address/Port 可以组成一对 socket pair
+- 网络联机都是双向的，在 TCP 的联机当中，需要进行客户端与服务器端两次的 SYN/ACK 封包发送与确认， 所以一次 TCP 联机确认时，需要进行三向交握的流程；
+- UDP 通讯协议由于不需要联机确认，因此适用于快速实时传输且不需要数据可靠的软件中，例如实时通讯；
+- ICMP 封包最主要的功能在回报网络的侦测状况，故不要使用防火墙将他完全挡掉；
+- 一般来说，一部主机里面的网络参数应该具备有：IP, Netmask, Network, Broadcast, Gateway, DNS 等；
+- 在主机的 port 当中，只有 root 可以启用小于 1024 以下的 port ；
+- DNS 主要的目的在于进行 Hostname 对应 IP 的功能；
 
 ## 如何链接Linux
 
@@ -419,7 +383,7 @@ Connection也是比较重要的，主要有两个作用，控制不再转发给�
 
 我们可以使用dmesg | grep -in eth来查看网卡，再来看下网络相关文件：
 
-![](https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191222212652.png)
+![](img/20191222212652.png)
 
 ## 常用网络命令
 
@@ -588,7 +552,7 @@ nslookup www.baidu.com
 
 总结，网络问题解决流程图：
 
-<img src="https://raw.githubusercontent.com/haojunsheng/ImageHost/master/20191229134850.png" style="zoom:50%;" />
+<img src="img/20191229134850.png" style="zoom:50%;" />
 
 下面我们来看DHCP(Dynamic Host Configuration Protocol) 。 IP, netmask, network, broadcast 与 gateway 都可以在 /etc/sysconfig/network-scripts/ifcfg-eth[0-n] 这档案里面设定，DNS 服务器的地址则是在 /etc/resolv.conf 里头设定。然后利用NAT功能就可以上网了。
 
