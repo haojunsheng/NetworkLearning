@@ -18,6 +18,8 @@ clientfd文件描述符，connect三次握手。
 
 总结下socket，本质上就是封装了TCP/UDP协议的细节，使我们通过简单的几步即可实现网络编程。
 
+
+
 # 后端编程核心
 
 我们来看下http服务端核心技术的演化：https://mp.weixin.qq.com/s/WO2GuaUCtvUFWIupgpWcbg
@@ -446,6 +448,74 @@ public void toJson(Object src, Type typeOfSrc, JsonWriter writer) throws JsonIOE
 ```
 
 总结，通过Gson，fastjson这样的库，我们可以完成java对象和json数据之间的转换。
+
+## 前后端分离方案
+
+最早是前后端耦合在一块，就是JSP那一套。然后提出前后端分离，由以下[2中方案](https://zhuanlan.zhihu.com/p/110038951)。
+
+- 前端维护html
+
+- - 静态资源完全由nginx托管。*js,css 和 index.html放在同一个`dist`*
+  - 静态资源上传CDN，Nginx只提供`index.html`
+
+```
+server {
+    listen       80;
+    server_name  localhost;
+
+    location / {
+        root   /app/dist; # 打包的路径
+        index  index.html index.htm;
+        try_files $uri $uri/ /index.html; # 单页应用防止重刷新返回404，如果是多页应用则无需这条命令
+    }
+
+    location /api {
+        proxy_pass https://anata.me; #后台转发地址
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   X-Real-IP         $remote_addr;
+    }
+}
+```
+
+- 后端维护html：需要渲染的页面带上后端注入的动态数据，又或者页面需要支持SEO，只能由后端来渲染。
+
+```
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        #app {
+            height: 100%;
+        }
+    </style>
+
+    <script type="text/javascript">
+        window.csrfToken = "${csrfToken}";
+        window.GlobalConfig = {
+            userInfo: {
+                nick: "${nickname}",
+                workNo: "${empId}",
+                business: "${business}"
+            },
+            logout: "/",
+            baseURL: "",
+            aclUrl: "${aclUrl}",
+        }
+    </script>
+    <link href="${cdnUrl}/main.css" rel="stylesheet">
+</head>
+<body>
+<div id="app"></div>
+<script type="text/javascript" src="${cdnUrl}/.dll.js"></script>
+<script type="text/javascript" src="${cdnUrl}/main.js"></script>
+</body>
+</html>
+```
+
+
 
 # 7. 总结
 

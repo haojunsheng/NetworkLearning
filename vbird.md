@@ -80,7 +80,7 @@
 - Options (其他参数)：这个是额外的功能，提供包括安全处理机制、路由纪录、时间戳、严格与宽松之来源路由等。
 - Padding(补齐项目)：由于 Options 的内容不一定有多大，但是我们知道 IP 每个数据都必须要是 32 bits，所以，若 Options 的数据不足 32 bits 时，则由 padding 主动补齐。
 
-我们主要关注TTL, Protocol, 来源地址与目标地址。
+我们主要关注**TTL, Protocol, 来源地址与目标地址**。
 
 上面我们主要看了IP的结构，并且知道了32的IP地址是很重要的，这32的IP地址怎么使用，是个大学问。二进制数据实在是太难记了，我们8位为一组，分为4段。大概是这样0.0.0.0 一直到 255.255.255.255。当然，在实际应用中，不是这么分配的，就像我们每个人的姓名由姓和名组成，IP地址也是，由Net_ID (网域号码)与 Host_ID (主机号码)组成。为了方便管理，我们把IP进行了分级：
 
@@ -144,7 +144,7 @@ Destination     Gateway         Genmask         Flags Metric Ref  Use Iface
 # Iface       ：就是 Interface (接口) 的意思，网络接口
 ```
 
-总结一下，我们学习了IP与MAC，我们肯定是需要绑定的，那么问题来了，我们怎么进行绑定呢，引入了**链结层的 ARP 与 RARP 协定**。 ARP (Address Resolution Protocol, 网络地址解析) 协议以及 RARP (Revers ARP, 反向网络地址解析)，作用是在IP地址和MAC之间建立映射。
+总结一下，我们学习了IP与MAC，我们肯定是需要绑定的，那么问题来了，我们怎么进行绑定呢，引入了**链结层的 ARP 与 RARP 协定**。 c协议以及 RARP (Revers ARP, 反向网络地址解析)，作用是在IP地址和MAC之间建立映射。
 
 我们想要通信时，会发起ARP请求，接收方会把MAC地址传回，然后就可以通信了，为了进行优化，我们引入了ARP表来进行缓存。
 
@@ -164,7 +164,7 @@ Destination     Gateway         Genmask         Flags Metric Ref  Use Iface
 
 先来看TCP。
 
-![各封包之间的相关性](http://cn.linux.vbird.org/linux_server/0110network_basic_files/packet_total.png)
+![各封包之间的相关性](img/packet_total.png)
 
 TCP长成这样：
 
