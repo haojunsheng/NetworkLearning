@@ -614,6 +614,3 @@ Address        HWtype  HWaddress           Flags Mask   Iface
 ## www服务器
 
 WWW 是 World Wide Web的缩写，我们来看下www（主要由unix-like的apache）是怎么来的？最开始有人造了http，为了http的使用，NCSA推出了HTTPd (HTTP daemon),由于httpd存在问题，有人造了apache。这个目录存放在 /var/www/html/ 下。
-
-
-
