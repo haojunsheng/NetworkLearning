@@ -24,8 +24,6 @@
 
 ![OSI 与 TCP/IP 协议之相关性](img/osi_tcpip.gif)
 
-下面我们开始研究：
-
 ### 链接层
 
 先来看链接层，我们主要研究广域网和局域网。先来看WAN，主要由传统电话拨接，整合服务数字网络 (Integrated Services Digital Network, ISDN)，非对称数位用路回路 (Asymmetric Digital Subscriber Line, ADSL)和电缆调制解调器 (Cable modem)。
@@ -73,7 +71,10 @@
   - M：若为 0 表示此 IP 为最后分段，若为 1 表示非最后分段。
 - Fragment Offset(分段偏移)：表示目前这个 IP 分段在原始的 IP 封包中所占的位置。就有点像是序号啦，有这个序号才能将所有的小 IP 分段组合成为原本的 IP 封包大小嘛！透过 Total Length, Identification, Flags 以及这个 Fragment Offset 就能够将小 IP 分段在收受端组合起来啰！
 - **Time To Live(TTL, 存活时间)**：表示这个 IP 封包的存活时间，范围为 0-255。当这个 IP 封包通过一个路由器时， TTL 就会减一，当 TTL 为 0 时，这个封包将会被直接丢弃。说实在的，要让 IP 封包通过 255 个路由器，还挺难的。
-- **Protocol Number(协定代码)**：来自传输层与网络层本身的其他数据都是放置在 IP 封包当中的，我们可以在 IP 表头记载这个 IP 封包内的资料是啥， 在这个字段就是记载每种数据封包的内容啦！在这个字段记载的代码与相关的封包协议名称如下所示：![](img/20191221213054.png)
+- **Protocol Number(协定代码)**：来自传输层与网络层本身的其他数据都是放置在 IP 封包当中的，我们可以在 IP 表头记载这个 IP 封包内的资料是啥， 在这个字段就是记载每种数据封包的内容啦！在这个字段记载的代码与相关的封包协议名称如下所示：
+
+![](https://raw.githubusercontent.com/haojunsheng/ImageHost/main/img/20230924195839.png)
+
 - Header Checksum(表头检查码)：用来检查这个 IP 表头的错误检验之用。
 - **Source Address**：还用讲吗？当然是来源的 IP 地址，从这里我们也知道 IP 是 32 位喔！
 - **Destination Address**：有来源还需要有目标才能传送，这里就是目标的 IP 地址。

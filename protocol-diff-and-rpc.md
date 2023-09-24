@@ -61,6 +61,3 @@ rexec [remote_host] [command]
 https://app.yinxiang.com/fx/248918f0-0787-4fea-aff3-92ca41adfdc0
 
 但是restful也存在很大的弊端，查询的时候不是很灵活。
-
-
-
