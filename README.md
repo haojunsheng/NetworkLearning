@@ -28,7 +28,7 @@ I/O多路复用是I/O模型之一，其他还有同步阻塞，同步非阻塞�
 
 网络IP层，需要掌握的知识点包括IP表头结构，IP地址的表示，IP地址的组成，分级，**Public IP**和**Private IP**，NAT技术，DHCP技术，**Netmask**，路由技术，IP和MAC地址的转换技术ARP。
 
- [vbird.md](vbird.md) 
+ [basic.md](basic.md) 
 
 # TCP
 
@@ -66,6 +66,15 @@ socket网络编程：我们需要掌握socket网络编程,包括套接字的结�
 
 要学会使用常见的命令**ifconfig**，**netstat**，ping，traceroute，nslookup，tcpdump等命令和**wireshark**分析网络包的工具。
 
+# 提高 Web 性能
+
+- 延迟：分组从信息源发送到目的地所需的时间。
+- 带宽：逻辑或物理通信路径最大的吞吐量。
+
+![image-20231105153400736](https://raw.githubusercontent.com/haojunsheng/ImageHost/main/img/20231105153402.png)
+
+
+
 # 常见问题
 
 ## C10K 问题
@@ -73,3 +82,11 @@ socket网络编程：我们需要掌握socket网络编程,包括套接字的结�
 如何在一台物理机上同时服务10000个用户？这里C表示并发，10K等于10000。
 
 操作系统最多支持 1024 个描述符。
+
+# 参考
+
+《计算机网络-第五版》
+
+《Web 性能权威指南》
+
+《深入理解 Linux网络》

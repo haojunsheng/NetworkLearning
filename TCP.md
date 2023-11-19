@@ -1,39 +1,3 @@
-<!--ts-->
-   * [TCP那些事](#tcp那些事)
-            * [TCP头格式](#tcp头格式)
-            * [TCP的状态机](#tcp的状态机)
-            * [数据传输中的Sequence Number](#数据传输中的sequence-number)
-            * [TCP重传机制](#tcp重传机制)
-               * [超时重传机制](#超时重传机制)
-               * [快速重传机制](#快速重传机制)
-               * [SACK 方法](#sack-方法)
-               * [Duplicate SACK – 重复收到数据的问题](#duplicate-sack--重复收到数据的问题)
-            * [TCP的RTT算法](#tcp的rtt算法)
-               * [经典算法](#经典算法)
-               * [Karn / Partridge 算法](#karn--partridge-算法)
-               * [Jacobson / Karels 算法](#jacobson--karels-算法)
-            * [TCP滑动窗口](#tcp滑动窗口)
-               * [Zero Window](#zero-window)
-               * [Silly Window Syndrome](#silly-window-syndrome)
-            * [TCP的拥塞处理 – Congestion Handling](#tcp的拥塞处理--congestion-handling)
-               * [慢热启动算法 – Slow Start](#慢热启动算法--slow-start)
-               * [拥塞避免算法 – Congestion Avoidance](#拥塞避免算法--congestion-avoidance)
-               * [拥塞状态时的算法](#拥塞状态时的算法)
-               * [快速恢复算法 – Fast Recovery](#快速恢复算法--fast-recovery)
-               * [算法示意图](#算法示意图)
-               * [FACK算法](#fack算法)
-            * [其它拥塞控制算法简介](#其它拥塞控制算法简介)
-               * [<strong>TCP Vegas 拥塞控制算法</strong>](#tcp-vegas-拥塞控制算法)
-               * [HSTCP(High Speed TCP) 算法](#hstcphigh-speed-tcp-算法)
-               * [TCP BIC 算法](#tcp-bic-算法)
-               * [TCP WestWood算法](#tcp-westwood算法)
-               * [其它](#其它)
-            * [后记](#后记)
-
-<!-- Added by: anapodoton, at: Sun Mar  1 22:07:01 CST 2020 -->
-
-<!--te-->
-
 # TCP那些事
 
 TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问题又带出了很多子问题和阴暗面。所以学习TCP本身是个比较痛苦的过程，但对于学习的过程却能让人有很多收获。关于TCP这个协议的细节，我还是推荐你去看[W.Richard Stevens](http://www.kohala.com/start/)的《[TCP/IP 详解 卷1：协议](http://book.douban.com/subject/1088054/)》（当然，你也可以去读一下[RFC793](http://tools.ietf.org/html/rfc793)以及后面N多的RFC）。另外，本文我会使用英文术语，这样方便你通过这些英文关键词来查找相关的技术文档。
@@ -59,7 +23,9 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 接下来，我们来看一下TCP头的格式
 
-![img](img/TCP-Header-01.jpg)TCP头格式（[图片来源](http://nmap.org/book/tcpip-ref.html)）
+![img](img/TCP-Header-01.jpg)
+
+TCP头格式（[图片来源](http://nmap.org/book/tcpip-ref.html))
 
 你需要注意这么几点：
 
@@ -83,7 +49,13 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 
 下面是：“**TCP协议的状态机**”（[图片来源](http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm)） 和 “**TCP建链接**”、“**TCP断链接**”、“**传数据**” 的对照图，我把两个图并排放在一起，这样方便在你对照着看。另外，下面这两个图非常非常的重要，你一定要记牢。（吐个槽：看到这样复杂的状态机，就知道这个协议有多复杂，复杂的东西总是有很多坑爹的事情，所以TCP协议其实也挺坑爹的）
 
-<img src="img/tcpfsm.png" alt="img" style="zoom:50%;" /> <img src="https://coolshell.cn/wp-content/uploads/2014/05/tcp_open_close.jpg" alt="img" style="zoom:50%;" />
+<img src="img/tcpfsm.png" alt="img" style="zoom:50%;" />
+
+
+
+<img src="https://coolshell.cn/wp-content/uploads/2014/05/tcp_open_close.jpg" alt="img" style="zoom:50%;" />
+
+
 
 很多人会问，为什么建链接要3次握手，断链接需要4次挥手？
 
@@ -92,6 +64,7 @@ TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问�
 - **对于4次挥手，**其实你仔细看是2次，因为TCP是全双工的，所以，发送方和接收方都需要Fin和Ack。只不过，有一方是被动的，所以看上去就成了所谓的4次挥手。如果两边同时断连接，那就会就进入到CLOSING状态，然后到达TIME_WAIT状态。下图是双方同时断连接的示意图（你同样可以对照着TCP状态机看）：
 
 <img src="img/tcpclosesimul.png" alt="img" style="zoom:50%;" />
+
 两端同时断连接（[图片来源](http://www.tcpipguide.com/free/t_TCPConnectionTermination-4.htm)）
 
  

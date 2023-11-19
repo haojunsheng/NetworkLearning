@@ -1,49 +1,3 @@
-<!--ts-->
-   * [unix网络编程套接字互联网API](#unix网络编程套接字互联网api)
-   * [前言](#前言)
-   * [Unix系统编程之文件](#unix系统编程之文件)
-      * [文件描述符](#文件描述符)
-   * [6. I/O复用：select和poll函数](#6-io复用select和poll函数)
-      * [6.1 概述](#61-概述)
-      * [6.2 I/O模型](#62-io模型)
-         * [6.2.1 <strong>阻塞式I/O模型</strong>](#621-阻塞式io模型)
-         * [6.2.2. <strong>非阻塞式I/O模型</strong>](#622-非阻塞式io模型)
-         * [6.2.3 I/O复用模型(select/poll)](#623-io复用模型selectpoll)
-         * [6.2.4 <strong>信号驱动式I/O模型(sigio)</strong>](#624-信号驱动式io模型sigio)
-         * [<strong>6.2.5 异步I/O模型(POSIX的aio_系列函数)</strong>](#625-异步io模型posix的aio_系列函数)
-         * [<strong>6.2.6 各种I/O模型的比较</strong>](#626-各种io模型的比较)
-         * [<strong>6.2.7 同步I/O和异步I/O对比</strong>](#627-同步io和异步io对比)
-      * [6.3 <strong>select函数</strong>](#63-select函数)
-         * [6.3.1 描述符就绪条件](#631-描述符就绪条件)
-         * [6.3.2 <strong>select的最大描述符数</strong>](#632-select的最大描述符数)
-      * [6.4 <strong>str_cli函数</strong>](#64-str_cli函数)
-      * [6.9 pselect函数](#69-pselect函数)
-      * [6.10 <strong>poll函数</strong>](#610-poll函数)
-      * [6.11 总结](#611-总结)
-         * [select](#select)
-         * [poll](#poll)
-         * [epoll](#epoll)
-            * [epoll操作过程](#epoll操作过程)
-            * [工作模式](#工作模式)
-            * [代码演示](#代码演示)
-            * [epoll总结](#epoll总结)
-   * [16. <strong>非阻塞式I/O</strong>](#16-非阻塞式io)
-      * [16.1 概述](#161-概述)
-      * [<strong>16.2 非阻塞读和写：str_cli函数（修订版）</strong>](#162-非阻塞读和写str_cli函数修订版)
-      * [<strong>16.3 非阻塞connect</strong>](#163-非阻塞connect)
-      * [<strong>16.4 非阻塞connect：时间获取客户程序</strong>](#164-非阻塞connect时间获取客户程序)
-      * [<strong>16.5 非阻塞connect：Web客户程序</strong>](#165-非阻塞connectweb客户程序)
-   * [25. <strong>信号驱动式I/O</strong>](#25-信号驱动式io)
-      * [<strong>25.1 概述</strong>](#251-概述)
-      * [25.2 <strong>套接字的信号驱动式I/O</strong>](#252-套接字的信号驱动式io)
-      * [<strong>25.3 使用SIGIO的UDP回射服务器程序</strong>](#253-使用sigio的udp回射服务器程序)
-      * [<strong>25.4 小结</strong>](#254-小结)
-   * [26.](#26)
-
-<!-- Added by: anapodoton, at: Sun Mar  1 22:02:21 CST 2020 -->
-
-<!--te-->
-
 # unix网络编程套接字互联网API
 
 # 前言
@@ -1092,6 +1046,3 @@ FreeBSD还提供SO_TIMESTAMP套接字选项，它在一个timeval结构中以辅
 对于UDP套接字，这种通知意味着或者到达一个数据报，或者到达一个异步错误，这两种情况下我们都调用recvfrom。
 
 我们把早先的UDP回射服务器程序改为使用信号驱动式I/O，所用技巧类似于NTP，尽快读入已到达的每个数据报以获取其到达时刻的精确时间戳，然后将它置于某个队列供后续处理。
-
-# 26. 
-

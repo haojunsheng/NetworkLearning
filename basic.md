@@ -1,22 +1,26 @@
-<!--ts-->
-   * [鸟哥linux私房菜](#鸟哥linux私房菜)
-      * [网络概念](#网络概念)
-         * [链接层](#链接层)
-         * [网络层](#网络层)
-         * [传输层](#传输层)
-         * [应用层](#应用层)
-         * [总结](#总结)
-      * [如何链接Linux](#如何链接linux)
-      * [常用网络命令](#常用网络命令)
-      * [网络帧错](#网络帧错)
-      * [DNS服务器](#dns服务器)
-      * [www服务器](#www服务器)
+# 鸟哥linux私房菜-网络部分
 
-<!-- Added by: anapodoton, at: Sun Mar  1 22:02:59 CST 2020 -->
+一台电脑接入互联网后，可以通过 DHCP 协议获得 IP 地址。
 
-<!--te-->
+我们知道，计算机通信本质上是网卡之间的通信，所以只有 IP 地址还不够，还需要通过 ARP 协议来获得 MAC 地址。
 
-# 鸟哥linux私房菜
+在一个局域网内，可以用过交换机进行通信。
+
+怎么判断一个是不是在同一个局域网呢？这个里面涉及的东西比较多，IP 地址划分（最开始分为 ABC 三类地址，但是这种方法过于粗暴，因此诞生了CIDR协议。）
+
+我们知道，IPv4的地址是不够用的，因此把一部分 IP 地址拿了出来，作为私有 IP 地址，这些地址只能在局域网使用。因此诞生了 NAT 协议，在公有 IP 地址和私有 IP 地址之间可以进行转换。
+
+当发现目的 IP 地址不在该局域网时，就会把数据发向路由器。路由器之间的通信依靠的就是动态路由算法了。
+
+传输层：TCP /UDP待补充。
+
+最后在应用层：我们可以使用 Http传输文本，为了安全，我们可以使用 TLS 对 Http 进行加密即 Https 协议。
+
+我们还应了解：RTMP 协议（基于 TCP），P2P 协议，DNS，HttpDNS，CDN 。
+
+## 硬件架构
+
+![](http://cn.linux.vbird.org/linux_server/0110network_basic_files/components.png)
 
 ## 网络概念
 
@@ -26,9 +30,9 @@
 
 ### 链接层
 
-先来看链接层，我们主要研究广域网和局域网。先来看WAN，主要由传统电话拨接，整合服务数字网络 (Integrated Services Digital Network, ISDN)，非对称数位用路回路 (Asymmetric Digital Subscriber Line, ADSL)和电缆调制解调器 (Cable modem)。
+先来看链接层，我们主要研究广域网和局域网（按照传播范围）。先来看广域网，主要由传统电话拨接，整合服务数字网络 (Integrated Services Digital Network, ISDN)，非对称数位用路回路 (Asymmetric Digital Subscriber Line, ADSL)和电缆调制解调器 (Cable modem，光猫)。
 
-接着来看局域网，局域网有多种实现方案，其中比较出名的是以太网，当然也有光纤。以太网的传输协议是CSMA/CD (Carrier Sense Multiple Access with Collision Detection) 。流程需要了解。
+接着来看局域网，局域网有多种实现方案，其中比较出名的是以太网。以太网的传输协议是CSMA/CD (Carrier Sense Multiple Access with Collision Detection) 。流程需要了解。
 
 我们来看下MAC (Media Access Control) ，是网卡的编号，看一下其封装的格式：
 
@@ -36,9 +40,11 @@
 
 里面还有一个细节：MTU (Maximum Transmission Unit, 最大传输单位)。虽然修改这个值可以减少拆包的概率，但是不是所有的网络都支持，所以不建议修改。
 
-上面我们看到了，集线器有很多的缺点，碰撞的可能性太大了，我们需要去解决这个问题。先来看下，为什么会碰撞呢？是因为共享的。那么我们不共享就好了吧？引入了交换器的概念。
+集线器。
 
 ![CSMA/CD联机示意图](http://cn.linux.vbird.org/linux_server/0110network_basic_files/csmacd.gif)
+
+上面我们看到了，集线器有很多的缺点。碰撞的可能性太大了，我们需要去解决这个问题。先来看下，为什么会碰撞呢？是因为共享的。那么我们不共享就好了吧？引入了交换器的概念。
 
 ![交换器每个埠口的带宽使用示意图](http://cn.linux.vbird.org/linux_server/0110network_basic_files/switch.png)
 
@@ -97,9 +103,9 @@
 
 private IP的好处是可以保护内部的电脑，也可以增加上网的主机的数量。需要借助于NAT（Network Address Translation，网络地址转换）技术，主要包括静态地址转换和动态地址转换。
 
-可以通过DHCP来向管理员获取IP地址。
+可以通过**DHCP**来向管理员获取IP地址。
 
-我们前面管理IP地址，只是分为了网络地址+主机地址来管理，事实上，在企业内部进行管理IP地址的时候，也可以进行更加仔细的管理，比如一个公司有2个部门，想要分开来管理，就可以向主机地址借一位来作为网络地址。
+我们前面管理IP地址，只是分为了网络地址+主机地址来管理，事实上，在企业内部进行管理IP地址的时候，也可以进行更加仔细的管理，比如一个公司有2个部门，想要分开来管理，就可以向主机地址借一位来作为网络地址(主要 ABC 三类划分太过于简单粗暴了)。
 
 于是我们就引入了子网掩码的概念了（**Netmask**）。我们来详细的看：
 
@@ -111,11 +117,11 @@ private IP的好处是可以保护内部的电脑，也可以增加上网的主�
 
 同时我们规定，A类地址的子网掩码是255.0.0.0,B类是255.255.0.0，C类地址的子网掩码是255.255.255.0。需要牢记。
 
-下面我们来看**无层级 IP： CIDR (Classless Interdomain Routing)**：
+下面我们来看**无层级 IP： CIDR (Classless Interdomain Routing)**（解决 ABC 类地址的缺陷）：
 
-比如说C类某个IP的CIDR表示就是192.168.0.0/24 
+比如说C类某个IP的CIDR表示就是192.168.0.0/24 。
 
-下面我们来看路由的概念，不同网络断之间的主机要如何进行通信呢？
+下面我们来看路由的概念，不同网络段之间的主机要如何进行通信呢？
 
 每台主机都会有自己的路由表，大概流程是这样的：
 
@@ -145,9 +151,9 @@ Destination     Gateway         Genmask         Flags Metric Ref  Use Iface
 # Iface       ：就是 Interface (接口) 的意思，网络接口
 ```
 
-总结一下，我们学习了IP与MAC，我们肯定是需要绑定的，那么问题来了，我们怎么进行绑定呢，引入了**链结层的 ARP 与 RARP 协定**。 c协议以及 RARP (Revers ARP, 反向网络地址解析)，作用是在IP地址和MAC之间建立映射。
+总结一下，我们学习了IP与MAC，我们肯定是需要绑定的，那么问题来了，我们怎么进行绑定呢，引入了**链结层的 ARP（Address Resolution Protocol, 网络地址解析） 与 RARP 协定**。 协议以及 RARP (Revers ARP, 反向网络地址解析)，作用是在IP地址和MAC之间建立映射。
 
-我们想要通信时，会发起ARP请求，接收方会把MAC地址传回，然后就可以通信了，为了进行优化，我们引入了ARP表来进行缓存。
+我们想要通信时，会发起ARP请求（靠吼），接收方会把MAC地址传回，然后就可以通信了，为了进行优化，我们引入了ARP表来进行缓存。
 
 我们可以使用ifconfig eth0来获取本机的mac地址。
 
@@ -231,6 +237,8 @@ TCP长成这样：
 ### 应用层
 
 最后我们来看应用层，为了上网，我们可以使用IP地址，但是基本没有人可以记住，所以我们引入了网址的概念，配个DNS（Domain Name System），我们实现了网址和IP地址的转换。
+
+#### Http
 
 我们来看下，如果我们的计算机需要联网，我们需要什么？IP，Netmask，Network,Broadcast，Gateway和DNS。
 
@@ -337,8 +345,6 @@ Connection也是比较重要的，主要有两个作用，控制不再转发给�
 
 还有很多的，需要不断的学习。
 
-
-
 **HTTP+** 加密 **+** 认证 **+** 完整性保护 **=HTTPS** 
 
 当然静态的html不能满足我们的需求，我们希望服务器可以返回动态的内容。第一个解决方案是CGI，CGI(Common Gateway Interface，通用网关接口)是指 Web 服务器在 接收到客户端发送过来的请求后转发给程序的一组机制。 比如php等语言。标准是RFC3875。
@@ -350,6 +356,14 @@ Connection也是比较重要的，主要有两个作用，控制不再转发给�
 我们可以看到CGI，由于每次接到请求，程序都要跟着启动一次。因此 一旦访问量过大，Web 服务器要承担相当大的负载。而 Servlet 运行 在与 Web 服务器相同的进程中，因此受到的负载较小。
 
 总结下，比较常用的概念：Router（路由器），FireWall（防火墙），NAT,DHCP,DNS,Proxy。
+
+#### 流媒体RTMP 协议
+
+#### P2P 协议
+
+#### HttpDNS
+
+#### CDN
 
 ### 总结
 
@@ -615,3 +629,7 @@ Address        HWtype  HWaddress           Flags Mask   Iface
 ## www服务器
 
 WWW 是 World Wide Web的缩写，我们来看下www（主要由unix-like的apache）是怎么来的？最开始有人造了http，为了http的使用，NCSA推出了HTTPd (HTTP daemon),由于httpd存在问题，有人造了apache。这个目录存放在 /var/www/html/ 下。
+
+# 参考 
+
+http://cn.linux.vbird.org/linux_server/0110network_basic.php#whatisnetwork_what
